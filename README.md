@@ -1,6 +1,15 @@
 # Virtual-Machine-Detector
 Simple code to detect whether you're in a virtual machine or not. 
 
+Current checks:
+- CPUID Vendor string 
+- 31st Bit in Leaf 1 of ECX
+- Kernel module names
+
+Tested in:
+- Host machine (Linux - Arch)
+- Qemu 7.1.0
+
 # Usage
 ```
 git clone https://github.com/CharlotteCross1998/Virtual-Machine-Detector.git
