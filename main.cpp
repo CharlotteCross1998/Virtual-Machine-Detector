@@ -1,6 +1,29 @@
 #include <cpuid.h>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <fstream>
+
+/*
+	Resources:
+	https://en.wikipedia.org/wiki/CPUID#EAX.3D1:_Processor_Info_and_Feature_Bits
+	https://handlers.sans.org/tliston/ThwartingVMDetection_Liston_Skoudis.pdf
+	Qemu: https://wiki.archlinux.org/title/QEMU#Preparing_an_Arch_Linux_guest and https://wiki.osdev.org/QEMU_fw_cfg
+	VMWare: https://wiki.archlinux.org/title/VMware/Install_Arch_Linux_as_a_guest
+	VBox: https://wiki.archlinux.org/title/VirtualBox/Install_Arch_Linux_as_a_guest#Load_the_VirtualBox_kernel_modules
+*/
+
+/*
+	TODO: (Priority order) 
+		- Check current code in variety of VMs (vmware, virtualbox etc.)
+		- Check if these modules are present in hosts (make sure guest only)
+		- Add more module names
+		- Check running process/services
+		- Check RAM (point 2 in https://handlers.sans.org/tliston/ThwartingVMDetection_Liston_Skoudis.pdf)
+		- Check if 31st bit ecx works on other arch types (e.g arm processors), and if not, support for those?
+		- Windows, mac etc. support?
+			- Check reg keys (windows)
+*/
 
 bool isBitSet(unsigned int num, unsigned int bit)
 {
@@ -15,13 +38,13 @@ static inline void ___get_cpuid(unsigned int reg, unsigned int* eax, unsigned in
 }
  
 /*Vendor-strings from Virtual Machines.*/
-#define CPUID_VENDOR_VMWARE	   "VMwareVMware"
-#define CPUID_VENDOR_KVM	   " KVMKVMVKM "
-#define CPUID_VENDOR_QEMU	   "TCGTCGTCGTCG"
-#define CPUID_VENDOR_XENHVM	   "XenVMMXenVMM"
-#define CPUID_VENDOR_MICROSOFT_HV "Microsoft Hv"
-#define CPUID_VENDOR_PARALLELS	" lrpepyh vr"
-#define CPUID_VENDOR_VIRTUALBOX	"VBoxVBoxVBox"
+#define CPUID_VENDOR_VMWARE			"VMwareVMware"
+#define CPUID_VENDOR_KVM			" KVMKVMVKM "
+#define CPUID_VENDOR_QEMU			"TCGTCGTCGTCG"
+#define CPUID_VENDOR_XENHVM			"XenVMMXenVMM"
+#define CPUID_VENDOR_MICROSOFT_HV 	"Microsoft Hv"
+#define CPUID_VENDOR_PARALLELS		" lrpepyh vr"
+#define CPUID_VENDOR_VIRTUALBOX		"VBoxVBoxVBox"
 
 #define RED     "\033[31m"      
 #define GREEN   "\033[32m"     
@@ -67,7 +90,34 @@ int main(void)
 	{
 		FAILED;
 	}
-
+	/*
+		-----------------------
+		Test for kernel modules
+		-----------------------
+	*/
+	//In order: qemu, vmware, vbox
+	std::vector<std::string> moduleNames = 
+	{
+		"qemu_fw_cfg", "virtio", "virtio_pci", "virtio_blk", "virtio_vlk", "virtio_net", "virtio_ring"
+ 		"vmw_balloon", "vmw_pvscsi", "vmw_vmci", "vmwgfx", "vmxnet3", "vsock", "vmw_vsock_vmci_transport"
+		"vboxguest", "vboxsf", "vboxvideo"
+ 	};
+	std::ifstream modules("/proc/modules");
+	std::stringstream buf;
+	buf << modules.rdbuf();
+	std::string modulesText = buf.str();
+	bool hasFoundModule = false;
+	std::cout << "Testing for module names ... ";
+	for(std::string moduleName : moduleNames)
+	{
+		if(modulesText.find(moduleName) != std::string::npos)
+		{
+			hasFoundModule = true;
+			break;
+		}
+	}
+	if(hasFoundModule) { PASSED; }
+	else { FAILED; }
 	/*
 		-------
 		Outcome
